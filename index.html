@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>House Display Poll</title>
+  <link rel="icon" type="image/png" href="gns.PNG">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: linear-gradient(135deg, #e8f5e9, #e3f2fd);
+      text-align: center;
+      padding: 40px;
+      color: #333;
+    }
+
+    h1 {
+      font-size: 2.4em;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 1.4em;
+      margin-bottom: 30px;
+      color: #555;
+    }
+
+    #poll-status {
+      font-size: 1.2em;
+      margin-bottom: 25px;
+    }
+
+    .vote-btn {
+      width: 250px;
+      padding: 15px;
+      margin: 10px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.05em;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.15s ease-in-out, box-shadow 0.2s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    }
+
+    .vote-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 10px rgba(0,0,0,0.2);
+    }
+
+    .green { background-color: #4CAF50; }
+    .blue { background-color: #2196F3; }
+    .red { background-color: #F44336; }
+    .yellow { background-color: #FFB300; color: #222; }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+      margin-top: 35px;
+    }
+
+    li {
+      font-size: 1.15em;
+      margin: 8px 0;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+      color: #666;
+    }
+  </style>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    // 🧠 Your Firebase Config (replace these values with your own)
+    const firebaseConfig = {
+  apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
+  authDomain: "live-poll-gns.firebaseapp.com",
+  databaseURL: "https://live-poll-gns-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "live-poll-gns",
+  storageBucket: "live-poll-gns.firebasestorage.app",
+  messagingSenderId: "217106845763",
+  appId: "1:217106845763:web:ba85010fe1a630aae344f6",
+  measurementId: "G-8TC1WSCRB6"
+};
+
+    firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+
+<body>
+  
+
+  <h1> Inter-House Poll </h1>
+  <h2>Which House Display did you like the best?</h2>
+
+  <p id="poll-status">Choose your favourite house below:</p>
+
+  <!-- Vote Buttons -->
+  <button class="vote-btn green" data-option="optionA">Green House (Mithila)</button>
+  <button class="vote-btn blue" data-option="optionB">Blue House (Nalanda)</button>
+  <button class="vote-btn red" data-option="optionC">Red House (Takshila)</button>
+  <button class="vote-btn yellow" data-option="optionD">Yellow House (Vikramshila)</button>
+
+  <h3 style="margin-top:30px;">📊 Live Results</h3>
+  <ul>
+    <li>Green House (Mithila): <span id="countA">0</span></li>
+    <li>Blue House (Nalanda): <span id="countB">0</span></li>
+    <li>Red House (Takshila): <span id="countC">0</span></li>
+    <li>Yellow House (Vikramshila): <span id="countD">0</span></li>
+  </ul>
+
+  <div class="footer">
+    <p>Made t=by the students of GNS</p>
+  </div>
+
+  <script>
+    const db = firebase.database();
+
+    // Live results update
+    db.ref("poll").on("value", snapshot => {
+      const data = snapshot.val();
+      if (data) {
+        document.getElementById("countA").textContent = data.optionA;
+        document.getElementById("countB").textContent = data.optionB;
+        document.getElementById("countC").textContent = data.optionC;
+        document.getElementById("countD").textContent = data.optionD;
+      }
+    });
+
+       // Check if user already voted
+      if (localStorage.getItem("hasVoted") === "true") {
+         document.querySelectorAll(".vote-btn").forEach(btn => btn.disabled = true);
+         document.getElementById("poll-status").textContent = "✅ You’ve already voted. Thank you!";
+        
+       }
+
+    // Handle voting
+    document.querySelectorAll(".vote-btn").forEach(button => {
+      button.addEventListener("click", () => {
+        const option = button.getAttribute("data-option");
+        const optionRef = db.ref("poll/" + option);
+        optionRef.transaction(current => (current || 0) + 1);
+
+        // Disable and hide buttons after voting
+document.querySelectorAll(".vote-btn").forEach(btn => {
+  btn.disabled = true;
+  btn.style.display = "none";
+});
+
+// Save that this user has voted
+localStorage.setItem("hasVoted", "true");
+
+// Show confirmation
+document.getElementById("poll-status").textContent = "✅ Vote recorded! Thank you for voting.";
+
+      });
+    });
+  </script>
+</body>
+</html>
