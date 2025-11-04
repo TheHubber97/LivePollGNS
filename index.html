@@ -8,12 +8,23 @@
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: linear-gradient(135deg, #e8f5e9, #e3f2fd);
+      background: #E6E6FA;
       text-align: center;
       padding: 40px;
       color: #333;
     }
-
+.info-box {
+  display: inline-block;
+  background: #fff8dc;           /* light golden / warm yellow for contrast */
+  border-left: 6px solid #f57c00; /* orange accent */
+  padding: 15px 25px;
+  border-radius: 10px;
+  font-size: 1.05em;
+  color: #444;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  margin-bottom: 25px;
+  max-width: 480px;
+}
     h1 {
       font-size: 2.4em;
       margin-bottom: 8px;
@@ -97,7 +108,9 @@
 
   <h1> Inter-House Poll </h1>
   <h2>Which House Display did you like the best?</h2>
-
+  <div class="info-box">
+  Vote for the House Display you liked best, and deserves your vote,not the house your child represents 
+</div>
   <p id="poll-status">Choose your favourite house below:</p>
 
   <!-- Vote Buttons -->
