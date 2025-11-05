@@ -166,6 +166,13 @@ document.getElementById("poll-status").textContent = "✅ Vote recorded! Thank y
 
       });
     });
+    db.ref("resetFlag").on("value", snap => {
+  if (snap.exists()) {
+    localStorage.removeItem("hasVoted");
+    location.reload();
+  }
+});
+
   </script>
 </body>
 </html>
