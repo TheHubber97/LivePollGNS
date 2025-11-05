@@ -103,6 +103,27 @@
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
+  // --- Reset flag listener (placed after Firebase initialization) ---
+let lastResetSeen = localStorage.getItem('lastResetSeen') || '0';
+
+db.ref('resetFlag').on('value', snap => {
+  const v = snap.val();
+  if (v && v !== lastResetSeen) {
+    // Remove hasVoted if admin triggered reset
+    localStorage.removeItem('hasVoted');
+    localStorage.setItem('lastResetSeen', v);
+    
+    // Optional: show a message or visual feedback
+    const status = document.getElementById('poll-status');
+    if (status) {
+      status.textContent = '🔄 Voting reset by admin — you can vote again!';
+    }
+
+    // Reveal vote buttons again if you hide them after voting
+    if (typeof showVoteButtons === 'function') showVoteButtons();
+  }
+});
+
 
   const allowedLat = 13.029947040832479;
   const allowedLng = 77.73874056820479;
