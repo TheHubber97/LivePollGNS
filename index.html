@@ -207,15 +207,16 @@
     showVoteButtons();
   });
 
-  db.ref('resetFlag').on('value', snap=>{
-    const v = snap.val();
-    if(v){
-      localStorage.removeItem('hasVoted');
-      db.ref('resetFlag').remove().catch(()=>{});
-      document.getElementById('poll-status').textContent = '🔄 Voting reset by admin — you can vote again.';
-      showVoteButtons();
-    }
-  });
+  db.ref('resetFlag').on('value', snap => {
+  const v = snap.val();
+  if (v) {
+    localStorage.removeItem('hasVoted');
+    document.getElementById('poll-status').textContent =
+      '🔄 Voting reset by admin — you can vote again.';
+    showVoteButtons();
+  }
+});
+
 
   updateVotingUI();
 </script>
