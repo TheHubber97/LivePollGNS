@@ -228,15 +228,35 @@ db.ref('resetFlag').on('value', snap => {
     showVoteButtons();
   });
 
-  db.ref('resetFlag').on('value', snap => {
+  // --- Improved reset flag listener ---
+let lastResetSeen = localStorage.getItem('lastResetSeen') || '0';
+
+db.ref('resetFlag').once('value').then(snap => {
   const v = snap.val();
-  if (v) {
+  if (v && v !== lastResetSeen) {
     localStorage.removeItem('hasVoted');
-    document.getElementById('poll-status').textContent =
-      '🔄 Voting reset by admin — you can vote again.';
-    showVoteButtons();
+    localStorage.setItem('lastResetSeen', v);
   }
 });
+
+// Listen for future resets live too
+db.ref('resetFlag').on('value', snap => {
+  const v = snap.val();
+  if (v && v !== lastResetSeen) {
+    localStorage.removeItem('hasVoted');
+    localStorage.setItem('lastResetSeen', v);
+
+    const status = document.getElementById('poll-status');
+    if (status) {
+      status.textContent = '🔄 Voting reset by admin — you can vote again!';
+    }
+
+    if (typeof showVoteButtons === 'function') showVoteButtons();
+
+    lastResetSeen = v;
+  }
+});
+
 
 
   updateVotingUI();
