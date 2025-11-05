@@ -6,62 +6,63 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="icon" href="gns.PNG" />
   <style>
-    :root{
-      --lav:#E6E6FA;
-      --info-bg:#fff8dc;
+    :root {
+      --lav: #E6E6FA;
+      --info-bg: #fff8dc;
     }
-    body{
+    body {
       font-family: 'Segoe UI', Tahoma, sans-serif;
       background: var(--lav);
-      text-align:center;
-      padding:40px;
-      color:#333;
+      text-align: center;
+      padding: 40px;
+      color: #333;
+      opacity: 0;
+      animation: fadeIn 1.5s ease forwards;
     }
-    .info-box{
-      display:inline-block;
-      background:var(--info-bg);
-      border-left:6px solid #f57c00;
-      padding:15px 25px;
-      border-radius:10px;
-      box-shadow:0 4px 10px rgba(0,0,0,0.1);
-      max-width:480px;
-      margin-bottom:20px;
+    @keyframes fadeIn {
+      to { opacity: 1; }
     }
-    h1{font-size:2.2rem;margin-bottom:8px}
-    h2{font-size:1.2rem;color:#555;margin-bottom:18px}
-    #poll-status{margin:10px 0 18px;font-size:1.05rem;color:#333}
-    #location-info{font-size:0.9rem;color:#666;margin-bottom:8px}
-
-    .vote-buttons{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;transition:opacity .6s ease, transform .3s ease;}
-    .vote-buttons.hidden{opacity:0;transform:translateY(6px);pointer-events:none}
-
-    .vote-btn{
-      min-width:220px;
-      padding:14px;
-      border-radius:12px;
-      border:none;
-      font-size:1.02rem;
-      color:#fff;
-      cursor:pointer;
-      box-shadow:0 6px 12px rgba(0,0,0,0.12);
-      transition:transform .15s ease,opacity .25s ease;
-      opacity:1;
+    .info-box {
+      display: inline-block;
+      background: var(--info-bg);
+      border-left: 6px solid #f57c00;
+      padding: 15px 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      max-width: 480px;
+      margin-bottom: 20px;
     }
-    .vote-btn:hover{transform:scale(1.03)}
-    .green{background:#4CAF50}
-    .blue{background:#2196F3}
-    .red{background:#F44336}
-    .yellow{background:#FFB300;color:#222}
-
-    .reset-btn{
-      margin-top:18px;
-      padding:10px 18px;
-      border-radius:8px;
-      border:none;
-      background:#6c63ff;color:white;cursor:pointer;
+    h1 { font-size: 2.2rem; margin-bottom: 8px; }
+    h2 { font-size: 1.2rem; color: #555; margin-bottom: 18px; }
+    #poll-status { margin: 10px 0 18px; font-size: 1.05rem; color: #333; }
+    #location-info { font-size: 0.9rem; color: #666; margin-bottom: 8px; }
+    .vote-buttons {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+      transition: opacity .6s ease, transform .3s ease;
     }
-
-    .footer{margin-top:32px;font-size:0.9rem;color:#666}
+    .vote-buttons.hidden { opacity: 0; transform: translateY(6px); pointer-events: none; }
+    .vote-btn {
+      min-width: 220px; padding: 14px;
+      border-radius: 12px; border: none; font-size: 1.02rem;
+      color: #fff; cursor: pointer;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+      transition: transform .15s ease, opacity .25s ease;
+    }
+    .vote-btn:hover { transform: scale(1.03); }
+    .green { background: #4CAF50; }
+    .blue { background: #2196F3; }
+    .red { background: #F44336; }
+    .yellow { background: #FFB300; color: #222; }
+    .reset-btn {
+      margin-top: 18px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: none;
+      background: #6c63ff;
+      color: white;
+      cursor: pointer;
+    }
+    .footer { margin-top: 32px; font-size: 0.9rem; color: #666; }
   </style>
 
   <!-- Firebase -->
@@ -79,9 +80,9 @@
 
   <div class="vote-buttons" id="voteButtons">
     <button class="vote-btn green" data-option="optionA">Green House (Mithila)</button>
-    <button class="vote-btn blue"  data-option="optionB">Blue House (Nalanda)</button>
-    <button class="vote-btn red"   data-option="optionC">Red House (Takshila)</button>
-    <button class="vote-btn yellow"data-option="optionD">Yellow House (Vikramshila)</button>
+    <button class="vote-btn blue" data-option="optionB">Blue House (Nalanda)</button>
+    <button class="vote-btn red" data-option="optionC">Red House (Takshashila)</button>
+    <button class="vote-btn yellow" data-option="optionD">Yellow House (Vikramshila)</button>
   </div>
 
   <div>
@@ -91,7 +92,7 @@
   <div class="footer">Made by the students of GNS — Vamsi, Govardhan, Rehaan, Kevin</div>
 
 <script>
-  // Firebase config (your project)
+  // Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
     authDomain: "live-poll-gns.firebaseapp.com",
@@ -105,45 +106,39 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // Venue coords + radius
   const allowedLat = 13.029947040832479;
   const allowedLng = 77.73874056820479;
-  const allowedRadiusKm = 1; // 1 km
+  const allowedRadiusKm = 1;
 
-  // Settings references (admin toggles live)
   const settingsRef = db.ref('settings');
   let geoEnabled = true;
   let votingEnabled = true;
 
-  // Read settings and react live
   settingsRef.on('value', snap => {
     const s = snap.val() || {};
-    geoEnabled = (s.geoEnabled !== false);      // default true
-    votingEnabled = (s.votingEnabled !== false);// default true
+    geoEnabled = (s.geoEnabled !== false);
+    votingEnabled = (s.votingEnabled !== false);
     updateVotingUI();
   });
 
   function updateVotingUI(){
     const btns = document.querySelectorAll('.vote-btn');
     if(!votingEnabled){
-      btns.forEach(b=>{ b.disabled = true; b.style.opacity = 0.5 });
+      btns.forEach(b=>{ b.disabled = true; b.style.opacity = 0.5; });
       document.getElementById('poll-status').textContent = '🚫 Voting is currently disabled by the admin.';
     } else {
-      // enable only if user hasn't voted
       if(localStorage.getItem('hasVoted') === 'true'){
-        btns.forEach(b=>{ b.disabled = true; b.style.opacity = 0.5 });
+        btns.forEach(b=>{ b.disabled = true; b.style.opacity = 0.5; });
         document.getElementById('poll-status').textContent = '✅ You’ve already voted. Thank you!';
-        // keep buttons hidden
         hideVoteButtons();
       } else {
-        btns.forEach(b=>{ b.disabled = false; b.style.opacity = 1 });
+        btns.forEach(b=>{ b.disabled = false; b.style.opacity = 1; });
         document.getElementById('poll-status').textContent = 'Choose your favourite house below:';
-        showVoteButtons(); // fade-in if needed
+        showVoteButtons();
       }
     }
   }
 
-  // --- haversine distance ---
   function toRad(v){ return v * Math.PI / 180; }
   function haversineKm(lat1, lon1, lat2, lon2){
     const R = 6371;
@@ -153,13 +148,12 @@
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
 
-  // Vote flow
-  function recordVote(option, button){
+  function recordVote(option){
     const optRef = db.ref('poll/' + option);
     optRef.transaction(current => (current || 0) + 1);
     localStorage.setItem('hasVoted','true');
     document.getElementById('poll-status').textContent = '✅ Vote recorded! Thank you for voting.';
-    hideVoteButtons(); // fade and remove
+    hideVoteButtons();
   }
 
   function attemptVote(button){
@@ -175,14 +169,12 @@
     const option = button.getAttribute('data-option');
 
     if(!geoEnabled){
-      // direct vote
-      if(confirm('Confirm vote for this option?')) recordVote(option, button);
+      if(confirm('Confirm vote for this option?')) recordVote(option);
       return;
     }
 
-    // geo enabled: request permission
     if(!navigator.geolocation){
-      alert('Geolocation not supported by this browser.');
+      alert('Geolocation not supported.');
       return;
     }
     navigator.geolocation.getCurrentPosition(pos=>{
@@ -190,16 +182,11 @@
       const dist = haversineKm(lat, lon, allowedLat, allowedLng);
       document.getElementById('location-info').textContent = `Your Location: ${lat.toFixed(5)}, ${lon.toFixed(5)} — ${dist.toFixed(2)} km from venue`;
       if(dist <= allowedRadiusKm){
-        if(confirm('Confirm vote for this option?')) recordVote(option, button);
-      } else {
-        alert('You are too far from the venue to vote.');
-      }
-    }, err=>{
-      alert('Please allow location access to vote.');
-    }, {timeout:10000});
+        if(confirm('Confirm vote for this option?')) recordVote(option);
+      } else alert('You are too far from the venue to vote.');
+    }, ()=>alert('Please allow location access to vote.'), {timeout:10000});
   }
 
-  // fade helpers
   function hideVoteButtons(){
     const vb = document.getElementById('voteButtons');
     vb.classList.add('hidden');
@@ -207,17 +194,14 @@
   }
   function showVoteButtons(){
     const vb = document.getElementById('voteButtons');
-    vb.style.display = 'flex';
-    // allow a tick to apply display then remove hidden to fade in
+    vb.style.display='flex';
     requestAnimationFrame(()=> vb.classList.remove('hidden'));
   }
 
-  // attach listeners
   document.querySelectorAll('.vote-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> attemptVote(btn));
   });
 
-  // Reset my vote with confirmation
   document.getElementById('resetMyVote').addEventListener('click', ()=>{
     if(!confirm('Are you sure you want to reset your vote on this device?')) return;
     localStorage.removeItem('hasVoted');
@@ -225,20 +209,16 @@
     showVoteButtons();
   });
 
-  // resetFlag listener from admin: clear hasVoted once and remove flag (prevents loops)
   db.ref('resetFlag').on('value', snap=>{
     const v = snap.val();
     if(v){
       localStorage.removeItem('hasVoted');
-      // clear flag so other clients won't repeatedly reload
-      db.ref('resetFlag').remove().catch(()=>{/*ignore*/});
-      // update UI
+      db.ref('resetFlag').remove().catch(()=>{});
       document.getElementById('poll-status').textContent = '🔄 Voting reset by admin — you can vote again.';
       showVoteButtons();
     }
   });
 
-  // ensure UI initial state
   updateVotingUI();
 </script>
 </body>
