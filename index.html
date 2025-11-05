@@ -8,23 +8,25 @@
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: #E6E6FA;
+      background: #E6E6FA; /* Lavender background */
       text-align: center;
       padding: 40px;
       color: #333;
     }
-.info-box {
-  display: inline-block;
-  background: #fff8dc;           /* light golden / warm yellow for contrast */
-  border-left: 6px solid #f57c00; /* orange accent */
-  padding: 15px 25px;
-  border-radius: 10px;
-  font-size: 1.05em;
-  color: #444;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  margin-bottom: 25px;
-  max-width: 480px;
-}
+
+    .info-box {
+      display: inline-block;
+      background: #fff8dc;           /* light golden / warm yellow */
+      border-left: 6px solid #f57c00; /* orange accent */
+      padding: 15px 25px;
+      border-radius: 10px;
+      font-size: 1.05em;
+      color: #444;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      margin-bottom: 25px;
+      max-width: 480px;
+    }
+
     h1 {
       font-size: 2.4em;
       margin-bottom: 8px;
@@ -64,15 +66,18 @@
     .red { background-color: #F44336; }
     .yellow { background-color: #FFB300; color: #222; }
 
-    ul {
-      list-style-type: none;
-      padding: 0;
-      margin-top: 35px;
+    .reset-btn {
+      background-color: #6c63ff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin-top: 20px;
+      border-radius: 8px;
+      cursor: pointer;
     }
 
-    li {
-      font-size: 1.15em;
-      margin: 8px 0;
+    .reset-btn:hover {
+      background-color: #574bff;
     }
 
     .footer {
@@ -87,30 +92,29 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
   <script>
-    // 🧠 Your Firebase Config (replace these values with your own)
+    // Firebase Config
     const firebaseConfig = {
-  apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
-  authDomain: "live-poll-gns.firebaseapp.com",
-  databaseURL: "https://live-poll-gns-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "live-poll-gns",
-  storageBucket: "live-poll-gns.firebasestorage.app",
-  messagingSenderId: "217106845763",
-  appId: "1:217106845763:web:ba85010fe1a630aae344f6",
-  measurementId: "G-8TC1WSCRB6"
-};
-
+      apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
+      authDomain: "live-poll-gns.firebaseapp.com",
+      databaseURL: "https://live-poll-gns-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "live-poll-gns",
+      storageBucket: "live-poll-gns.firebasestorage.app",
+      messagingSenderId: "217106845763",
+      appId: "1:217106845763:web:ba85010fe1a630aae344f6",
+      measurementId: "G-8TC1WSCRB6"
+    };
     firebase.initializeApp(firebaseConfig);
   </script>
 </head>
 
 <body>
-  
-
-  <h1> Inter-House Poll </h1>
+  <h1>Inter-House Poll</h1>
   <h2>Which House Display did you like the best?</h2>
+
   <div class="info-box">
-  Vote for the House Display you liked best, and deserves your vote,not the house your child represents 
-</div>
+    Vote for the House Display you liked best, and deserves your vote — not the house your child represents.
+  </div>
+
   <p id="poll-status">Choose your favourite house below:</p>
 
   <!-- Vote Buttons -->
@@ -119,57 +123,51 @@
   <button class="vote-btn red" data-option="optionC">Red House (Takshila)</button>
   <button class="vote-btn yellow" data-option="optionD">Yellow House (Vikramshila)</button>
 
+  <div>
+    <button class="reset-btn" id="resetVote">🔁 Reset My Vote</button>
+  </div>
 
   <div class="footer">
-    <p>Made by the students of GNS, Vamsi Bhujji, GovardHan T, Rehaan Mohammed, Kevin Collins</p>
+    <p>Made by the students of GNS — Vamsi Bhujji, GovardHan T, Rehaan Mohammed, Kevin Collins</p>
   </div>
 
   <script>
     const db = firebase.database();
 
-    // Live results update
-    db.ref("poll").on("value", snapshot => {
-      const data = snapshot.val();
-      if (data) {
-        document.getElementById("countA").textContent = data.optionA;
-        document.getElementById("countB").textContent = data.optionB;
-        document.getElementById("countC").textContent = data.optionC;
-        document.getElementById("countD").textContent = data.optionD;
-      }
-    });
+    // Disable vote buttons if already voted
+    if (localStorage.getItem("hasVoted") === "true") {
+      document.querySelectorAll(".vote-btn").forEach(btn => btn.disabled = true);
+      document.getElementById("poll-status").textContent = "✅ You’ve already voted. Thank you!";
+    }
 
-       // Check if user already voted
-      if (localStorage.getItem("hasVoted") === "true") {
-         document.querySelectorAll(".vote-btn").forEach(btn => btn.disabled = true);
-         document.getElementById("poll-status").textContent = "✅ You’ve already voted. Thank you!";
-        
-       }
-
-    // Handle voting
+    // Voting logic
     document.querySelectorAll(".vote-btn").forEach(button => {
       button.addEventListener("click", () => {
         const option = button.getAttribute("data-option");
         const optionRef = db.ref("poll/" + option);
+
         optionRef.transaction(current => (current || 0) + 1);
 
-        // Disable and hide buttons after voting
-document.querySelectorAll(".vote-btn").forEach(btn => {
-  btn.disabled = true;
-  btn.style.display = "none";
-});
+        document.querySelectorAll(".vote-btn").forEach(btn => {
+          btn.disabled = true;
+          btn.style.display = "none";
+        });
 
-// Save that this user has voted
-localStorage.setItem("hasVoted", "true");
-
-// Show confirmation
-document.getElementById("poll-status").textContent = "✅ Vote recorded! Thank you for voting.";
-
+        localStorage.setItem("hasVoted", "true");
+        document.getElementById("poll-status").textContent = "✅ Vote recorded! Thank you for voting.";
       });
     });
-    
-  
-});
 
+    // Reset "hasVoted"
+    document.getElementById("resetVote").addEventListener("click", () => {
+      localStorage.removeItem("hasVoted");
+      document.querySelectorAll(".vote-btn").forEach(btn => {
+        btn.disabled = false;
+        btn.style.display = "inline-block";
+      });
+      document.getElementById("poll-status").textContent = "🔄 You can now vote again.";
+    });
   </script>
 </body>
 </html>
+
