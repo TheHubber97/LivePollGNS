@@ -60,9 +60,11 @@
 </head>
 <body>
   <h1>Inter-House Poll</h1>
-  <h2>Which House Display did you like the best?</h2>
+  <h2 id="questionText">Which House Display did you like the best?</h2>
 
-  <div class="info-box">Vote for the House Display you liked best, and deserves your vote — not just your child's house.</div>
+  <div class="info-box" id="infoText">
+    Vote for the House Display you liked best, and deserves your vote — not just your child's house.
+  </div>
 
   <p id="poll-status">Choose your favourite house below:</p>
   <p id="location-info"></p>
@@ -77,7 +79,6 @@
   <div class="footer">Made by the students of GNS — Vamsi, Govardan, Kevin</div>
 
 <script>
-  // Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
     authDomain: "live-poll-gns.firebaseapp.com",
@@ -103,6 +104,11 @@
     const s = snap.val() || {};
     geoEnabled = (s.geoEnabled !== false);
     votingEnabled = (s.votingEnabled !== false);
+
+    // 🟣 NEW: Update question and info text live
+    if (s.questionText) document.getElementById('questionText').textContent = s.questionText;
+    if (s.infoText) document.getElementById('infoText').textContent = s.infoText;
+
     updateVotingUI();
   });
 
@@ -185,26 +191,12 @@
     requestAnimationFrame(()=> vb.classList.remove('hidden'));
   }
 
-  // Attach listeners to vote buttons
   document.querySelectorAll('.vote-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> attemptVote(btn));
   });
 
-  // --- Final fixed reset flag logic ---
   let lastResetSeen = localStorage.getItem('lastResetSeen') || '0';
 
-  // 1. On page load, check reset status
-  db.ref('resetFlag').once('value').then(snap => {
-    const v = snap.val();
-    if (v && v !== lastResetSeen) {
-      localStorage.removeItem('hasVoted');
-      localStorage.setItem('lastResetSeen', v);
-      document.getElementById('poll-status').textContent = 'Voting reset by admin — you can vote again!';
-      showVoteButtons();
-    }
-  });
-
-  // 2. Real-time listener for future resets
   db.ref('resetFlag').on('value', snap => {
     const v = snap.val();
     if (v && v !== lastResetSeen) {
