@@ -202,7 +202,7 @@
     if (v && v !== lastResetSeen) {
       localStorage.removeItem('hasVoted');
       localStorage.setItem('lastResetSeen', v);
-      document.getElementById('poll-status').textContent = 'Voting reset by admin — you can vote again!';
+      document.getElementById('poll-status').textContent = 'Choose your favourite house below';
       showVoteButtons();
       lastResetSeen = v;
     }
