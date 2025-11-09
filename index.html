@@ -2,71 +2,80 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Live Poll</title>
+  <title>House Display Poll</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="icon" href="gns.PNG" />
   <style>
+    :root { --lav: #E6E6FA; --info-bg: #fff8dc; }
     body {
       font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: #f3e5f5;
-      margin: 0;
-      padding: 20px;
+      background: var(--lav);
       text-align: center;
+      padding: 40px;
       color: #333;
+      opacity: 0;
+      animation: fadeIn 1.5s ease forwards;
     }
-    .pollBox {
+    @keyframes fadeIn { to { opacity: 1; } }
+    .info-box {
       display: inline-block;
-      background: white;
-      padding: 24px;
-      border-radius: 14px;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-      margin-top: 30px;
-      max-width: 450px;
+      background: var(--info-bg);
+      border-left: 6px solid #f57c00;
+      padding: 15px 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      max-width: 480px;
+      margin-bottom: 20px;
     }
-    h1 { color: #8e24aa; margin-bottom: 10px; }
-    p.info { font-size: 15px; color: #555; margin: 10px 0 25px; }
-
-    button {
-      display: block;
-      width: 100%;
-      margin: 8px 0;
+    h1 { font-size: 2.2rem; margin-bottom: 8px; }
+    h2 { font-size: 1.2rem; color: #555; margin-bottom: 18px; }
+    #poll-status { margin: 10px 0 18px; font-size: 1.05rem; color: #333; }
+    #location-info { font-size: 0.9rem; color: #666; margin-bottom: 8px; }
+    .vote-buttons {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+      transition: opacity .6s ease, transform .3s ease;
+    }
+    .vote-buttons.hidden { opacity: 0; transform: translateY(6px); pointer-events: none; }
+    .vote-btn {
+      min-width: 220px;
       padding: 14px;
+      border-radius: 12px;
       border: none;
-      border-radius: 8px;
-      color: white;
-      font-size: 16px;
+      font-size: 1.02rem;
+      color: #fff;
       cursor: pointer;
-      transition: transform 0.15s, opacity 0.2s;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+      transition: transform .15s ease, opacity .25s ease;
     }
-    button:hover { transform: scale(1.04); opacity: 0.9; }
-
-    .red { background: #e53935; }
-    .blue { background: #1e88e5; }
-    .green { background: #43a047; }
-    .yellow { background: #fdd835; color: #333; }
-    .purple { background: #8e24aa; }
-
-    #statusMsg { margin-top: 20px; font-weight: bold; color: #6a1b9a; }
+    .vote-btn:hover { transform: scale(1.03); }
+    .green { background: #4CAF50; }
+    .blue { background: #2196F3; }
+    .red { background: #F44336; }
+    .yellow { background: #FFB300; color: #222; }
+    .footer { margin-top: 32px; font-size: 0.9rem; color: #666; }
   </style>
 
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
-  <div class="pollBox">
-    <h1 id="questionText">Loading question...</h1>
-    <p class="info" id="infoText">Please wait</p>
-
-    <div id="voteButtons" style="display:none;">
-      <button class="red"    onclick="castVote('Red House')">Red House</button>
-      <button class="blue"   onclick="castVote('Blue House')">Blue House</button>
-      <button class="green"  onclick="castVote('Green House')">Green House</button>
-      <button class="yellow" onclick="castVote('Yellow House')">Yellow House</button>
-      <button class="purple" onclick="castVote('Purple House')">Purple House</button>
-    </div>
-
-    <p id="statusMsg"></p>
+  <h1>Inter-House Poll</h1>
+  <h2 id="questionText">Which House Display did you like the best?</h2>
+  <div class="info-box" id="infoText">
+    Vote for the House Display you liked best, and deserves your vote — not just your child's house.
   </div>
+  <p id="poll-status">Choose your favourite house below:</p>
+  <p id="location-info"></p>
+
+  <div class="vote-buttons" id="voteButtons">
+    <button class="vote-btn green" data-option="optionA">Green House (Mithila)</button>
+    <button class="vote-btn blue" data-option="optionB">Blue House (Nalanda)</button>
+    <button class="vote-btn red" data-option="optionC">Red House (Takshashila)</button>
+    <button class="vote-btn yellow" data-option="optionD">Yellow House (Vikramshila)</button>
+  </div>
+
+  <div class="footer">Made by the students of GNS — Vamsi, Govardan, Kevin</div>
 
   <script>
     const firebaseConfig = {
@@ -82,41 +91,111 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // ---------------- Load Question and Info ----------------
-    db.ref('settings').on('value', snap => {
-      const data = snap.val() || {};
-      document.getElementById('questionText').textContent = data.questionText || 'Vote for your favourite!';
-      document.getElementById('infoText').textContent = data.infoText || '';
-      document.getElementById('voteButtons').style.display = 'block';
+    const allowedLat = 13.029947040832479;
+    const allowedLng = 77.73874056820479;
+    const allowedRadiusKm = 1;
+
+    const settingsRef = db.ref('settings');
+    let geoEnabled = true;
+    let votingEnabled = true;
+
+    settingsRef.on('value', snap => {
+      const s = snap.val() || {};
+      geoEnabled = (s.geoEnabled !== false);
+      votingEnabled = (s.votingEnabled !== false);
+      if (s.questionText) document.getElementById('questionText').textContent = s.questionText;
+      if (s.infoText) document.getElementById('infoText').textContent = s.infoText;
+      updateVotingUI();
     });
 
-    // ---------------- Voting Logic ----------------
-    const UID_KEY = 'gns_poll_uid';
-    const VOTED_KEY = 'gns_poll_voted';
-    const uid = localStorage.getItem(UID_KEY) || generateUID();
-
-    function generateUID() {
-      const id = 'uid_' + Math.random().toString(36).substring(2, 10);
-      localStorage.setItem(UID_KEY, id);
-      return id;
+    function updateVotingUI() {
+      const btns = document.querySelectorAll('.vote-btn');
+      const status = document.getElementById('poll-status');
+      if (!votingEnabled) {
+        btns.forEach(b => { b.disabled = true; b.style.opacity = 0.5; });
+        status.textContent = '🚫 Voting is currently disabled by the admin.';
+      } else {
+        if (localStorage.getItem('hasVoted') === 'true') {
+          btns.forEach(b => { b.disabled = true; b.style.opacity = 0.5; });
+          status.textContent = 'You’ve already voted. Thank you!';
+          hideVoteButtons();
+        } else {
+          btns.forEach(b => { b.disabled = false; b.style.opacity = 1; });
+          status.textContent = 'Choose your favourite house below:';
+          showVoteButtons();
+        }
+      }
     }
 
-    function castVote(house) {
-      if (localStorage.getItem(VOTED_KEY)) {
-        document.getElementById('statusMsg').textContent = 'You have already voted!';
+    function toRad(v){ return v * Math.PI / 180; }
+    function haversineKm(lat1, lon1, lat2, lon2){
+      const R = 6371;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)**2 +
+        Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function recordVote(option) {
+      const optRef = db.ref('poll/' + option);
+      optRef.transaction(current => (current || 0) + 1);
+      localStorage.setItem('hasVoted', 'true');
+      document.getElementById('poll-status').textContent = 'Vote recorded! Thank you for voting.';
+      hideVoteButtons();
+    }
+
+    function attemptVote(button) {
+      if (!votingEnabled) { alert('Voting is disabled by the admin.'); return; }
+      if (localStorage.getItem('hasVoted') === 'true') {
+        alert('You have already voted on this device.'); return;
+      }
+      const option = button.getAttribute('data-option');
+      if (!geoEnabled) {
+        if (confirm('Confirm vote for this option?')) recordVote(option);
         return;
       }
+      if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
 
-      db.ref('votes/' + uid).set(house)
-        .then(() => {
-          localStorage.setItem(VOTED_KEY, 'true');
-          document.getElementById('statusMsg').textContent = 'Vote recorded successfully! ✅';
-        })
-        .catch(err => {
-          console.error(err);
-          document.getElementById('statusMsg').textContent = 'Error submitting vote.';
-        });
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        const dist = haversineKm(lat, lon, allowedLat, allowedLng);
+        document.getElementById('location-info').textContent =
+          `Your Location: ${lat.toFixed(5)}, ${lon.toFixed(5)} — ${dist.toFixed(2)} km from venue`;
+        if (dist <= allowedRadiusKm) {
+          if (confirm('Confirm vote for this option?')) recordVote(option);
+        } else alert('You are too far from the venue to vote.');
+      }, () => alert('Please allow location access to vote.'), { timeout: 10000 });
     }
+
+    function hideVoteButtons(){
+      const vb = document.getElementById('voteButtons');
+      vb.classList.add('hidden');
+      setTimeout(()=>{ vb.style.display='none'; }, 650);
+    }
+    function showVoteButtons(){
+      const vb = document.getElementById('voteButtons');
+      vb.style.display='flex';
+      requestAnimationFrame(()=> vb.classList.remove('hidden'));
+    }
+
+    document.querySelectorAll('.vote-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> attemptVote(btn));
+    });
+
+    let lastResetSeen = localStorage.getItem('lastResetSeen') || '0';
+    db.ref('resetFlag').on('value', snap => {
+      const v = snap.val();
+      if (v && v !== lastResetSeen) {
+        localStorage.removeItem('hasVoted');
+        localStorage.setItem('lastResetSeen', v);
+        document.getElementById('poll-status').textContent = 'Choose your favourite house below:';
+        showVoteButtons();
+        lastResetSeen = v;
+      }
+    });
+
+    updateVotingUI();
   </script>
 </body>
 </html>
