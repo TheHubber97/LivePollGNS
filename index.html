@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Admin Control Panel</title>
+  <title>Live Poll</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="icon" href="gns.PNG" />
   <style>
@@ -10,106 +10,62 @@
       font-family: 'Segoe UI', Tahoma, sans-serif;
       background: #f3e5f5;
       margin: 0;
-      padding: 40px;
+      padding: 20px;
       text-align: center;
       color: #333;
     }
-    .panel {
+    .pollBox {
       display: inline-block;
       background: white;
       padding: 24px;
       border-radius: 14px;
       box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-      margin-top: 20px;
+      margin-top: 30px;
+      max-width: 450px;
     }
+    h1 { color: #8e24aa; margin-bottom: 10px; }
+    p.info { font-size: 15px; color: #555; margin: 10px 0 25px; }
+
     button {
       display: block;
-      width: 280px;
-      margin: 10px auto;
-      padding: 12px;
-      border-radius: 8px;
+      width: 100%;
+      margin: 8px 0;
+      padding: 14px;
       border: none;
-      color: #fff;
+      border-radius: 8px;
+      color: white;
+      font-size: 16px;
       cursor: pointer;
-      font-size: 15px;
-      transition: background 0.25s, transform 0.15s;
+      transition: transform 0.15s, opacity 0.2s;
     }
     button:hover { transform: scale(1.04); opacity: 0.9; }
-    .red { background: #e53935; }
-    .orange { background: #fb8c00; }
-    .green { background: #43a047; }
-    .blue { background: #1e88e5; }
-    .purple { background: #8e24aa; }
-    .grey { background: #757575; }
 
-    table {
-      margin: 20px auto;
-      border-collapse: collapse;
-      width: 80%;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px 12px;
-      text-align: center;
-    }
-    th {
-      background: #8e24aa;
-      color: white;
-    }
-    tr.leader {
-      background-color: #c8e6c9 !important;
-      font-weight: bold;
-    }
-    #chartContainer {
-      width: 80%;
-      margin: 20px auto;
-      position: relative;
-      z-index: 0;
-    }
-    #resultsChart {
-      pointer-events: none; /* Fix: allows buttons below to be clickable */
-    }
+    .red { background: #e53935; }
+    .blue { background: #1e88e5; }
+    .green { background: #43a047; }
+    .yellow { background: #fdd835; color: #333; }
+    .purple { background: #8e24aa; }
+
+    #statusMsg { margin-top: 20px; font-weight: bold; color: #6a1b9a; }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 </head>
 <body>
-  <h1>Admin Control Panel</h1>
+  <div class="pollBox">
+    <h1 id="questionText">Loading question...</h1>
+    <p class="info" id="infoText">Please wait</p>
 
-  <div id="loginBox">
-    <p><strong>Enter Admin Password</strong></p>
-    <input id="adminPass" type="password" placeholder="Password" />
-    <button class="purple" onclick="checkPassword()">Login</button>
-    <p id="loginStatus" style="color:#c62828"></p>
-  </div>
-
-  <div id="controls" class="panel" style="display:none">
-    <h2>Control Actions</h2>
-    <div id="controlsInner">
-      <button class="red"    onclick="confirmResetVotes()">Reset All Votes</button>
-      <button class="orange" onclick="confirmResetHasVoted()">Reset All 'hasVoted'</button>
-      <button class="grey"   onclick="resetMyLocalVote()">Reset My 'hasVoted' Only</button>
-      <button class="green"  onclick="confirmDownloadCSV()">Download CSV</button>
-      <button id="geoBtn" class="blue" onclick="confirmToggleGeo()">Enable Geo Restriction</button>
-      <button id="voteBtn" class="purple" onclick="confirmToggleVoting()">Enable Voting</button>
-      <button id="questionBtn" class="orange" onclick="confirmToggleQuestion()">Change question to 'Awooo'</button>
+    <div id="voteButtons" style="display:none;">
+      <button class="red"    onclick="castVote('Red House')">Red House</button>
+      <button class="blue"   onclick="castVote('Blue House')">Blue House</button>
+      <button class="green"  onclick="castVote('Green House')">Green House</button>
+      <button class="yellow" onclick="castVote('Yellow House')">Yellow House</button>
+      <button class="purple" onclick="castVote('Purple House')">Purple House</button>
     </div>
 
-    <!-- Live results and chart -->
-    <h2 style="margin-top:30px;">Live Results</h2>
-    <table id="resultsTable">
-      <thead>
-        <tr><th>House</th><th>Votes</th></tr>
-      </thead>
-      <tbody id="resultsBody"></tbody>
-    </table>
-
-    <div id="chartContainer">
-      <canvas id="resultsChart"></canvas>
-    </div>
+    <p id="statusMsg"></p>
   </div>
 
   <script>
@@ -126,97 +82,40 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const PASSWORD = 'osamaabinladen';
-    let chart, questionBtn;
+    // ---------------- Load Question and Info ----------------
+    db.ref('settings').on('value', snap => {
+      const data = snap.val() || {};
+      document.getElementById('questionText').textContent = data.questionText || 'Vote for your favourite!';
+      document.getElementById('infoText').textContent = data.infoText || '';
+      document.getElementById('voteButtons').style.display = 'block';
+    });
 
-    window.onload = function() {
-      questionBtn = document.getElementById('questionBtn');
-      const input = document.getElementById('adminPass');
-      input.addEventListener("keypress", e => { if (e.key === "Enter") checkPassword(); });
+    // ---------------- Voting Logic ----------------
+    const UID_KEY = 'gns_poll_uid';
+    const VOTED_KEY = 'gns_poll_voted';
+    const uid = localStorage.getItem(UID_KEY) || generateUID();
+
+    function generateUID() {
+      const id = 'uid_' + Math.random().toString(36).substring(2, 10);
+      localStorage.setItem(UID_KEY, id);
+      return id;
     }
 
-    function checkPassword() {
-      const p = document.getElementById('adminPass').value;
-      if (p === PASSWORD) {
-        document.getElementById('loginBox').style.display = 'none';
-        document.getElementById('controls').style.display = 'block';
-        syncButtonLabels();
-        startListeningForResults();
-      } else document.getElementById('loginStatus').textContent = 'Incorrect password';
-    }
-
-    async function syncButtonLabels() {
-      const snap = await db.ref('settings/questionText').once('value');
-      const current = snap.val();
-      const isAwooo = current === "Which house had the best march past?";
-      questionBtn.textContent = isAwooo ? "Change question back to Display" : "Change question to March Past";
-    }
-
-    async function confirmToggleQuestion() {
-      const snap = await db.ref('settings/questionText').once('value');
-      const currentQ = snap.val();
-      const isAwooo = currentQ === "Which house had the best march past?";
-
-      const newQuestion = isAwooo
-        ? "Which House Display did you like the best?"
-        : "Which house had the best march past?";
-      const newInfo = isAwooo
-        ? "Vote for the House Display you liked best, and deserves your vote — not just your child's house."
-        : "Vote for the March Past you liked best, and deserves your vote — not just your child's house.";
-
-      await db.ref('settings').update({ questionText: newQuestion, infoText: newInfo });
-      alert("Question changed successfully!");
-      syncButtonLabels();
-    }
-
-    // ---------------- LIVE RESULTS + CHART ----------------
-    function startListeningForResults() {
-      db.ref('votes').on('value', snap => {
-        const data = snap.val() || {};
-        const counts = {};
-        Object.values(data).forEach(v => counts[v] = (counts[v] || 0) + 1);
-        updateResults(counts);
-      });
-    }
-
-    function updateResults(counts) {
-      const tbody = document.getElementById('resultsBody');
-      tbody.innerHTML = '';
-
-      const labels = Object.keys(counts);
-      const values = Object.values(counts);
-      const maxVotes = Math.max(...values, 0);
-
-      labels.forEach(house => {
-        const tr = document.createElement('tr');
-        if (counts[house] === maxVotes && maxVotes > 0) tr.classList.add('leader');
-        tr.innerHTML = `<td>${house}</td><td>${counts[house]}</td>`;
-        tbody.appendChild(tr);
-      });
-
-      if (!chart) {
-        const ctx = document.getElementById('resultsChart').getContext('2d');
-        chart = new Chart(ctx, {
-          type: 'pie',
-          data: {
-            labels,
-            datasets: [{
-              data: values,
-              backgroundColor: ['#e53935','#1e88e5','#43a047','#fdd835','#8e24aa']
-            }]
-          },
-          options: {
-            plugins: {
-              datalabels: { color: '#fff', font: { weight: 'bold' } },
-              legend: { position: 'bottom' }
-            }
-          }
-        });
-      } else {
-        chart.data.labels = labels;
-        chart.data.datasets[0].data = values;
-        chart.update();
+    function castVote(house) {
+      if (localStorage.getItem(VOTED_KEY)) {
+        document.getElementById('statusMsg').textContent = 'You have already voted!';
+        return;
       }
+
+      db.ref('votes/' + uid).set(house)
+        .then(() => {
+          localStorage.setItem(VOTED_KEY, 'true');
+          document.getElementById('statusMsg').textContent = 'Vote recorded successfully! ✅';
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById('statusMsg').textContent = 'Error submitting vote.';
+        });
     }
   </script>
 </body>
