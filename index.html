@@ -2,213 +2,222 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>House Display Poll</title>
+  <title>Admin Control Panel</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="icon" href="gns.PNG" />
   <style>
-    :root {
-      --lav: #E6E6FA;
-      --info-bg: #fff8dc;
-    }
     body {
       font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: var(--lav);
-      text-align: center;
+      background: #f3e5f5;
+      margin: 0;
       padding: 40px;
+      text-align: center;
       color: #333;
-      opacity: 0;
-      animation: fadeIn 1.5s ease forwards;
     }
-    @keyframes fadeIn { to { opacity: 1; } }
-    .info-box {
+    .panel {
       display: inline-block;
-      background: var(--info-bg);
-      border-left: 6px solid #f57c00;
-      padding: 15px 25px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      max-width: 480px;
-      margin-bottom: 20px;
+      background: white;
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      margin-top: 20px;
     }
-    h1 { font-size: 2.2rem; margin-bottom: 8px; }
-    h2 { font-size: 1.2rem; color: #555; margin-bottom: 18px; }
-    #poll-status { margin: 10px 0 18px; font-size: 1.05rem; color: #333; }
-    #location-info { font-size: 0.9rem; color: #666; margin-bottom: 8px; }
-    .vote-buttons {
-      display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
-      transition: opacity .6s ease, transform .3s ease;
+    button {
+      display: block;
+      width: 280px;
+      margin: 10px auto;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background 0.25s, transform 0.15s;
     }
-    .vote-buttons.hidden { opacity: 0; transform: translateY(6px); pointer-events: none; }
-    .vote-btn {
-      min-width: 220px; padding: 14px;
-      border-radius: 12px; border: none; font-size: 1.02rem;
-      color: #fff; cursor: pointer;
-      box-shadow: 0 6px 12px rgba(0,0,0,0.12);
-      transition: transform .15s ease, opacity .25s ease;
+    button:hover { transform: scale(1.04); opacity: 0.9; }
+    .red { background: #e53935; }
+    .orange { background: #fb8c00; }
+    .green { background: #43a047; }
+    .blue { background: #1e88e5; }
+    .purple { background: #8e24aa; }
+    .grey { background: #757575; }
+
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      width: 80%;
     }
-    .vote-btn:hover { transform: scale(1.03); }
-    .green { background: #4CAF50; }
-    .blue { background: #2196F3; }
-    .red { background: #F44336; }
-    .yellow { background: #FFB300; color: #222; }
-    .footer { margin-top: 32px; font-size: 0.9rem; color: #666; }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      text-align: center;
+    }
+    th {
+      background: #8e24aa;
+      color: white;
+    }
+    tr.leader {
+      background-color: #c8e6c9 !important;
+      font-weight: bold;
+    }
+    #chartContainer {
+      width: 80%;
+      margin: 20px auto;
+      position: relative;
+      z-index: 0;
+    }
+    #resultsChart {
+      pointer-events: none; /* Fix: allows buttons below to be clickable */
+    }
   </style>
 
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 </head>
 <body>
-  <h1>Inter-House Poll</h1>
-  <h2 id="questionText">Which House Display did you like the best?</h2>
+  <h1>Admin Control Panel</h1>
 
-  <div class="info-box" id="infoText">
-    Vote for the House Display you liked best, and deserves your vote — not just your child's house.
+  <div id="loginBox">
+    <p><strong>Enter Admin Password</strong></p>
+    <input id="adminPass" type="password" placeholder="Password" />
+    <button class="purple" onclick="checkPassword()">Login</button>
+    <p id="loginStatus" style="color:#c62828"></p>
   </div>
 
-  <p id="poll-status">Choose your favourite house below:</p>
-  <p id="location-info"></p>
+  <div id="controls" class="panel" style="display:none">
+    <h2>Control Actions</h2>
+    <div id="controlsInner">
+      <button class="red"    onclick="confirmResetVotes()">Reset All Votes</button>
+      <button class="orange" onclick="confirmResetHasVoted()">Reset All 'hasVoted'</button>
+      <button class="grey"   onclick="resetMyLocalVote()">Reset My 'hasVoted' Only</button>
+      <button class="green"  onclick="confirmDownloadCSV()">Download CSV</button>
+      <button id="geoBtn" class="blue" onclick="confirmToggleGeo()">Enable Geo Restriction</button>
+      <button id="voteBtn" class="purple" onclick="confirmToggleVoting()">Enable Voting</button>
+      <button id="questionBtn" class="orange" onclick="confirmToggleQuestion()">Change question to 'Awooo'</button>
+    </div>
 
-  <div class="vote-buttons" id="voteButtons">
-    <button class="vote-btn green" data-option="optionA">Green House (Mithila)</button>
-    <button class="vote-btn blue" data-option="optionB">Blue House (Nalanda)</button>
-    <button class="vote-btn red" data-option="optionC">Red House (Takshashila)</button>
-    <button class="vote-btn yellow" data-option="optionD">Yellow House (Vikramshila)</button>
+    <!-- Live results and chart -->
+    <h2 style="margin-top:30px;">Live Results</h2>
+    <table id="resultsTable">
+      <thead>
+        <tr><th>House</th><th>Votes</th></tr>
+      </thead>
+      <tbody id="resultsBody"></tbody>
+    </table>
+
+    <div id="chartContainer">
+      <canvas id="resultsChart"></canvas>
+    </div>
   </div>
 
-  <div class="footer">Made by the students of GNS — Vamsi, Govardan, Kevin</div>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
+      authDomain: "live-poll-gns.firebaseapp.com",
+      databaseURL: "https://live-poll-gns-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "live-poll-gns",
+      storageBucket: "live-poll-gns.firebasestorage.app",
+      messagingSenderId: "217106845763",
+      appId: "1:217106845763:web:ba85010fe1a630aae344f6",
+      measurementId: "G-8TC1WSCRB6"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBhnauTjb28fq4BJM7sHd-yCX7Fpqej_RQ",
-    authDomain: "live-poll-gns.firebaseapp.com",
-    databaseURL: "https://live-poll-gns-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "live-poll-gns",
-    storageBucket: "live-poll-gns.firebasestorage.app",
-    messagingSenderId: "217106845763",
-    appId: "1:217106845763:web:ba85010fe1a630aae344f6",
-    measurementId: "G-8TC1WSCRB6"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+    const PASSWORD = 'osamaabinladen';
+    let chart, questionBtn;
 
-  const allowedLat = 13.029947040832479;
-  const allowedLng = 77.73874056820479;
-  const allowedRadiusKm = 1;
+    window.onload = function() {
+      questionBtn = document.getElementById('questionBtn');
+      const input = document.getElementById('adminPass');
+      input.addEventListener("keypress", e => { if (e.key === "Enter") checkPassword(); });
+    }
 
-  const settingsRef = db.ref('settings');
-  let geoEnabled = true;
-  let votingEnabled = true;
+    function checkPassword() {
+      const p = document.getElementById('adminPass').value;
+      if (p === PASSWORD) {
+        document.getElementById('loginBox').style.display = 'none';
+        document.getElementById('controls').style.display = 'block';
+        syncButtonLabels();
+        startListeningForResults();
+      } else document.getElementById('loginStatus').textContent = 'Incorrect password';
+    }
 
-  settingsRef.on('value', snap => {
-    const s = snap.val() || {};
-    geoEnabled = (s.geoEnabled !== false);
-    votingEnabled = (s.votingEnabled !== false);
+    async function syncButtonLabels() {
+      const snap = await db.ref('settings/questionText').once('value');
+      const current = snap.val();
+      const isAwooo = current === "Which house had the best march past?";
+      questionBtn.textContent = isAwooo ? "Change question back to Display" : "Change question to March Past";
+    }
 
-    // 🟣 NEW: Update question and info text live
-    if (s.questionText) document.getElementById('questionText').textContent = s.questionText;
-    if (s.infoText) document.getElementById('infoText').textContent = s.infoText;
+    async function confirmToggleQuestion() {
+      const snap = await db.ref('settings/questionText').once('value');
+      const currentQ = snap.val();
+      const isAwooo = currentQ === "Which house had the best march past?";
 
-    updateVotingUI();
-  });
+      const newQuestion = isAwooo
+        ? "Which House Display did you like the best?"
+        : "Which house had the best march past?";
+      const newInfo = isAwooo
+        ? "Vote for the House Display you liked best, and deserves your vote — not just your child's house."
+        : "Vote for the March Past you liked best, and deserves your vote — not just your child's house.";
 
-  function updateVotingUI(){
-    const btns = document.querySelectorAll('.vote-btn');
-    const status = document.getElementById('poll-status');
-    if(!votingEnabled){
-      btns.forEach(b=>{ b.disabled = true; b.style.opacity = 0.5; });
-      status.textContent = '🚫 Voting is currently disabled by the admin.';
-    } else {
-      if(localStorage.getItem('hasVoted') === 'true'){
-        btns.forEach(b=>{ b.disabled = true; b.style.opacity = 0.5; });
-        status.textContent = 'You’ve already voted. Thank you!';
-        hideVoteButtons();
+      await db.ref('settings').update({ questionText: newQuestion, infoText: newInfo });
+      alert("Question changed successfully!");
+      syncButtonLabels();
+    }
+
+    // ---------------- LIVE RESULTS + CHART ----------------
+    function startListeningForResults() {
+      db.ref('votes').on('value', snap => {
+        const data = snap.val() || {};
+        const counts = {};
+        Object.values(data).forEach(v => counts[v] = (counts[v] || 0) + 1);
+        updateResults(counts);
+      });
+    }
+
+    function updateResults(counts) {
+      const tbody = document.getElementById('resultsBody');
+      tbody.innerHTML = '';
+
+      const labels = Object.keys(counts);
+      const values = Object.values(counts);
+      const maxVotes = Math.max(...values, 0);
+
+      labels.forEach(house => {
+        const tr = document.createElement('tr');
+        if (counts[house] === maxVotes && maxVotes > 0) tr.classList.add('leader');
+        tr.innerHTML = `<td>${house}</td><td>${counts[house]}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      if (!chart) {
+        const ctx = document.getElementById('resultsChart').getContext('2d');
+        chart = new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels,
+            datasets: [{
+              data: values,
+              backgroundColor: ['#e53935','#1e88e5','#43a047','#fdd835','#8e24aa']
+            }]
+          },
+          options: {
+            plugins: {
+              datalabels: { color: '#fff', font: { weight: 'bold' } },
+              legend: { position: 'bottom' }
+            }
+          }
+        });
       } else {
-        btns.forEach(b=>{ b.disabled = false; b.style.opacity = 1; });
-        status.textContent = 'Choose your favourite house below:';
-        showVoteButtons();
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = values;
+        chart.update();
       }
     }
-  }
-
-  function toRad(v){ return v * Math.PI / 180; }
-  function haversineKm(lat1, lon1, lat2, lon2){
-    const R = 6371;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  }
-
-  function recordVote(option){
-    const optRef = db.ref('poll/' + option);
-    optRef.transaction(current => (current || 0) + 1);
-    localStorage.setItem('hasVoted','true');
-    document.getElementById('poll-status').textContent = 'Vote recorded! Thank you for voting.';
-    hideVoteButtons();
-  }
-
-  function attemptVote(button){
-    if(!votingEnabled){
-      alert('Voting is disabled by the admin.');
-      return;
-    }
-    if(localStorage.getItem('hasVoted') === 'true'){
-      alert('You have already voted on this device.');
-      return;
-    }
-
-    const option = button.getAttribute('data-option');
-
-    if(!geoEnabled){
-      if(confirm('Confirm vote for this option?')) recordVote(option);
-      return;
-    }
-
-    if(!navigator.geolocation){
-      alert('Geolocation not supported.');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(pos=>{
-      const lat = pos.coords.latitude, lon = pos.coords.longitude;
-      const dist = haversineKm(lat, lon, allowedLat, allowedLng);
-      document.getElementById('location-info').textContent =
-        `Your Location: ${lat.toFixed(5)}, ${lon.toFixed(5)} — ${dist.toFixed(2)} km from venue`;
-      if(dist <= allowedRadiusKm){
-        if(confirm('Confirm vote for this option?')) recordVote(option);
-      } else alert('You are too far from the venue to vote.');
-    }, ()=>alert('Please allow location access to vote.'), {timeout:10000});
-  }
-
-  function hideVoteButtons(){
-    const vb = document.getElementById('voteButtons');
-    vb.classList.add('hidden');
-    setTimeout(()=>{ vb.style.display='none'; }, 650);
-  }
-  function showVoteButtons(){
-    const vb = document.getElementById('voteButtons');
-    vb.style.display='flex';
-    requestAnimationFrame(()=> vb.classList.remove('hidden'));
-  }
-
-  document.querySelectorAll('.vote-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=> attemptVote(btn));
-  });
-
-  let lastResetSeen = localStorage.getItem('lastResetSeen') || '0';
-
-  db.ref('resetFlag').on('value', snap => {
-    const v = snap.val();
-    if (v && v !== lastResetSeen) {
-      localStorage.removeItem('hasVoted');
-      localStorage.setItem('lastResetSeen', v);
-      document.getElementById('poll-status').textContent = 'Choose your favourite house below';
-      showVoteButtons();
-      lastResetSeen = v;
-    }
-  });
-
-  updateVotingUI();
-</script>
+  </script>
 </body>
 </html>
