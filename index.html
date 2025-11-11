@@ -17,7 +17,7 @@
       animation: fadeIn 1.5s ease forwards;
     }
     @keyframes fadeIn { to { opacity: 1; } }
-    .info-box {
+    .info-box, .note-box {
       display: inline-block;
       background: var(--info-bg);
       border-left: 6px solid #f57c00;
@@ -26,11 +26,12 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       max-width: 480px;
       margin-bottom: 20px;
+      text-align: left;
     }
     h1 { font-size: 2.2rem; margin-bottom: 8px; }
     h2 { font-size: 1.2rem; color: #555; margin-bottom: 18px; }
-    #poll-status { margin: 10px 0 18px; font-size: 1.05rem; color: #333; }
-    #location-info { font-size: 0.9rem; color: #666; margin-bottom: 8px; }
+    #poll-status { margin: 10px 0 18px; font-size: 1.05rem; color: #333; text-align: center; }
+    #location-info { font-size: 0.9rem; color: #666; margin-bottom: 8px; text-align: center; }
     .vote-buttons {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
       transition: opacity .6s ease, transform .3s ease;
@@ -52,7 +53,7 @@
     .blue { background: #2196F3; }
     .red { background: #F44336; }
     .yellow { background: #FFB300; color: #222; }
-    .footer { margin-top: 32px; font-size: 0.9rem; color: #666; }
+    .footer { margin-top: 32px; font-size: 0.9rem; color: #666; text-align: center; }
   </style>
 
   <!-- Firebase -->
@@ -62,9 +63,20 @@
 <body>
   <h1>Inter-House Poll</h1>
   <h2 id="questionText">Which House Display did you like the best?</h2>
+
   <div class="info-box" id="infoText">
     Vote for the House Display you liked best, and deserves your vote — not just your child's house.
   </div>
+
+  <div class="note-box" id="noteBox">
+    <strong>Please note:</strong><br>
+    Judgement should be based on,<br>
+    ⦿ Theme Relevance<br>
+    ⦿ Creativity and Innovation<br>
+    ⦿ Visual Appeal<br>
+    ⦿ Team Effort
+  </div>
+
   <p id="poll-status">Choose your favourite house below:</p>
   <p id="location-info"></p>
 
@@ -99,41 +111,14 @@
     let geoEnabled = true;
     let votingEnabled = true;
 
-    // Text A and B
-    const textA = `Please note:
-Judgement should be based on, <br>
-⦿ Theme Relevance             <br>
-⦿ Creativity and Innovation<br>
-⦿ Visual Appeal<br>
-⦿ Team Effort`;
-
-    const textB = `Please note:<br>
-Judgement should be based on,<br>
-⦿ Coordination and Formation<br>
-⦿ Energy and Enthusiasm<br>
-⦿ Uniformity and Discipline<br>
-⦿ Confidence`;
-
     settingsRef.on('value', snap => {
       const s = snap.val() || {};
       geoEnabled = (s.geoEnabled !== false);
       votingEnabled = (s.votingEnabled !== false);
 
-      if (s.questionText) {
-        document.getElementById('questionText').textContent = s.questionText;
-
-        // Auto-switch infoText based on question
-        const q = s.questionText.toLowerCase();
-        if (q.includes('display')) {
-          document.getElementById('infoText').textContent = textA;
-        } else if (q.includes('march past')) {
-          document.getElementById('infoText').textContent = textB;
-        } else if (s.infoText) {
-          document.getElementById('infoText').textContent = s.infoText;
-        }
-      } else if (s.infoText) {
-        document.getElementById('infoText').textContent = s.infoText;
-      }
+      if (s.questionText) document.getElementById('questionText').textContent = s.questionText;
+      if (s.infoText) document.getElementById('infoText').textContent = s.infoText;
+      if (s.noteText) document.getElementById('noteBox').innerHTML = s.noteText;
 
       updateVotingUI();
     });
@@ -162,8 +147,7 @@ Judgement should be based on,<br>
       const R = 6371;
       const dLat = toRad(lat2 - lat1);
       const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat/2)**2 +
-        Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
@@ -177,14 +161,9 @@ Judgement should be based on,<br>
 
     function attemptVote(button) {
       if (!votingEnabled) { alert('Voting is disabled by the admin.'); return; }
-      if (localStorage.getItem('hasVoted') === 'true') {
-        alert('You have already voted on this device.'); return;
-      }
+      if (localStorage.getItem('hasVoted') === 'true') { alert('You have already voted on this device.'); return; }
       const option = button.getAttribute('data-option');
-      if (!geoEnabled) {
-        if (confirm('Confirm vote for this option?')) recordVote(option);
-        return;
-      }
+      if (!geoEnabled) { if (confirm('Confirm vote for this option?')) recordVote(option); return; }
       if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
 
       navigator.geolocation.getCurrentPosition(pos => {
