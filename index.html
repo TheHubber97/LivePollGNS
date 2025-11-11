@@ -99,12 +99,42 @@
     let geoEnabled = true;
     let votingEnabled = true;
 
+    // Text A and B
+    const textA = `Please note:
+Judgement should be based on,
+⦿ Theme Relevance
+⦿ Creativity and Innovation
+⦿ Visual Appeal
+⦿ Team Effort`;
+
+    const textB = `Please note:
+Judgement should be based on,
+⦿ Coordination and Formation
+⦿ Energy and Enthusiasm
+⦿ Uniformity and Discipline
+⦿ Confidence`;
+
     settingsRef.on('value', snap => {
       const s = snap.val() || {};
       geoEnabled = (s.geoEnabled !== false);
       votingEnabled = (s.votingEnabled !== false);
-      if (s.questionText) document.getElementById('questionText').textContent = s.questionText;
-      if (s.infoText) document.getElementById('infoText').textContent = s.infoText;
+
+      if (s.questionText) {
+        document.getElementById('questionText').textContent = s.questionText;
+
+        // Auto-switch infoText based on question
+        const q = s.questionText.toLowerCase();
+        if (q.includes('display')) {
+          document.getElementById('infoText').textContent = textA;
+        } else if (q.includes('march past')) {
+          document.getElementById('infoText').textContent = textB;
+        } else if (s.infoText) {
+          document.getElementById('infoText').textContent = s.infoText;
+        }
+      } else if (s.infoText) {
+        document.getElementById('infoText').textContent = s.infoText;
+      }
+
       updateVotingUI();
     });
 
